@@ -1,0 +1,7 @@
+{
+    "default-src": ["'self'"],
+    "script-src": ["'unsafe-eval'", "scripts.example.com"],
+    "object-src": [],
+    "style-src": ["styles.example.com"],
+    "upgrade-insecure-requests" : true
+}
