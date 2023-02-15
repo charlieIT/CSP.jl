@@ -1,98 +1,73 @@
-const wildcard      = "*"
-const none          = "none"
-const self          = "'self'"
-const unsafe_inline = "'unsafe-inline'"
-const unsafe_eval   = "'unsafe-eval'"
+mutable struct Policy
+    directives::AbstractDict{String, DirectiveTypes}
+    report_only::Bool
+    #nonces::NonceStore
+        
+    function Policy(directives::AbstractDict, report_only::Bool=false)
+        directives = Base.convert(OrderedDict{String, DirectiveTypes}, directives)
+        return new(directives, report_only)
+    end
 
-const sandbox_values = []
+    function Policy(; default::Bool=false, report_only::Bool=false, kwargs...)
+        tmp = OrderedDict([get_directive(k)=>v for (k,v) in Dict(kwargs...)])
+        if default
+            tmp = merge(DEFAULT_POLICY, tmp)
+        end
+        return Policy(tmp, report_only)
+    end
 
-"""
-    const DirectiveTypes
-
-* Nothing: Directive will be absent from policy
-* Empty Tuple or Set: 
-* True: only key is added to policy header
-"""
-const DirectiveTypes = Union{Nothing, String, Set{String}, Vector{String}, Tuple}
-
-"""
-    const ReportToTypes
-
-* String: JSON 
-* Nothing: Directive will be absent from policy
-* 
-"""
-const ReportToTypes  = Union{Nothing, String}
-
-const SandboxTypes   = Union{Nothing, String, Bool}
-const TrustedTypes   = Union{Bool, DirectiveTypes}
-
-"""
-    mutable struct Policy
-
-Policy properties affect a content-security policy header
-
-See also: `headers.jl`
-"""
-Base.@kwdef mutable struct Policy
-    base_uri::DirectiveTypes            = nothing # do not set automatically, does not use default-src for fallback
-    child_src::DirectiveTypes           = nothing
-    connect_src::DirectiveTypes         = ()
-    default_src::DirectiveTypes         = self
-    font_src::DirectiveTypes            = ()
-    form_action::DirectiveTypes         = nothing # does not use default-src for fallback
-    frame_ancestors::DirectiveTypes     = nothing
-    frame_src::DirectiveTypes           = nothing
-    img_src::DirectiveTypes             = (self,) # (self, "data:")
-    manifest_src::DirectiveTypes        = nothing
-    media_src::DirectiveTypes           = nothing
-    object_src::DirectiveTypes          = nothing
-    prefetch_src::DirectiveTypes        = nothing
-    # Reporting Directives
-    # https://w3c.github.io/reporting/#group
-    report_to::ReportToTypes            =  "default" # Nothing, String, # does not use default-src for fallback
-    report_uri::DirectiveTypes          = nothing
-    # local extension to handle and generate report-to response headers
-    #report_groups::ReportGroups         = nothing
-    # end Reporting Directives
-
-    # Content-Security-Policy: sandbox; Content-Security-Policy: sandbox <value>;
-    sandbox::SandboxTypes               =  nothing # does not use default-src for fallback
-    script_src::DirectiveTypes          =  nothing
-    script_src_attr::DirectiveTypes     =  nothing
-    script_src_elem::DirectiveTypes     =  nothing
-    style_src::DirectiveTypes           =  nothing
-    style_src_attr::DirectiveTypes      =  nothing
-    style_src_elem::DirectiveTypes      =  nothing
-    upgrade_insecure_requests::Bool     =  false
-    worker_src::DirectiveTypes          =  nothing
-    # Trusted Types Directives
-    trusted_types::TrustedTypes         =  nothing # Content-Security-Policy: trusted-types;
-    require_trusted_types_for::DirectiveTypes = nothing
-    # end trusted types
+    function Policy(directives::Pair...; default::Bool=false, report_only::Bool=false)
+        d = Dict{Any, Any}([Symbol(first(p))=>last(p) for p in collect(directives)])
+        return Policy(;default=default, report_only=report_only, d...)
+    end
 end
 
-function (policy::Policy)(;kwargs...)
-    [Base.setproperty!(policy, name, value) for (name,value) in Dict(kwargs...) if name in fieldnames(Policy)]
+function (policy::Policy)(pairs::Pair...; kwargs...)
+    for (name, value) in merge(Dict(pairs), Dict(kwargs...))
+        if hasproperty(Policy, Symbol(name))
+            Base.setproperty!(policy, name, value)
+        else
+            name = get_directive(name)
+            setindex!(getfield(policy, :directives), value, string(name))
+        end
+    end
     return policy
 end
 
 function Base.getindex(policy::Policy, idx::String)
-    idx = string(replace(idx, "-"=>"_"))
-    if Symbol(idx) in fieldnames(Policy)
-        return Base.getproperty(policy, Symbol(idx))
-    end
+    return getindex(getfield(policy, :directives), idx)
 end
-
+    
 function Base.setindex!(policy::Policy, value, idx::String)
-    idx = string(replace(idx, "-"=>"_"))
-    if Symbol(idx) in fieldnames(Policy)
-        return Base.setproperty!(policy, Symbol(idx), value)
-    end
+    return policy(;[(Symbol(idx), value)]...)
 end
 
+function hasproperty(::Type{Policy}, prop::Symbol)
+    return prop in fieldnames(Policy)
+end
+
+function Base.getproperty(policy::Policy, key::Symbol)
+    if hasproperty(Policy, key) 
+        return getfield(policy, key)
+    end
+    return getindex(policy, string(key))
+end
+
+function Base.setproperty!(policy::Policy, prop::Symbol, value)
+    if hasproperty(Policy, prop)
+        return setfield!(policy, prop, value)
+    end
+    return setindex!(policy, value, string(prop))
+end
+
+function Base.Dict(policy::Policy)::Dict
+    directives = Base.convert(Dict{String, Any}, getfield(policy, :directives))
+    [directives[_directive_name(prop)] = getfield(policy, prop) for prop in fieldnames(Policy) if prop != :directives]
+    return directives
+end
+    
 function Base.string(policy::Policy)
-    return last(first(headers(policy)))
+    return last(HTTP.Header(policy))
 end
 
 function Policy(json::String)
@@ -104,45 +79,15 @@ function Policy(json::String)
 end
 
 function Base.convert(::Type{Policy}, d::AbstractDict)
-    parsed = Dict{Any, Any}([Symbol(_to_prop_name(k))=>v for (k,v) in d])
-    for (k,v) in parsed
+    report_only = get(d, "report-only", get(d, "report_only", false))
+    directives  = filter((kv)->!hasproperty(Policy, Symbol(kv.first)), d)
+    for (k,v) in directives
         if isa(v, Vector) || isa(v, Set)
-            v = Set{String}(string.(v))
+            v = collect(Set{String}(string.(v)))
         elseif !isa(v, Bool)
             v = string(v)
         end
-        parsed[k] = v
+        directives[k] = v
     end
-    return Policy(;parsed...)
-end
-
-"""
-    DefaultPolicy(sources...)
-"""
-function Policy(
-    sources...;
-    font_src    = (),
-    img_src     = (),
-    script_src  = (),
-    style_src   = (),
-    kwargs...)
-
-    return Policy(
-        default_src =
-            [
-            "'unsafe-eval'",
-            "'unsafe-inline'",
-            "data:",
-            "filesystem:",
-            "about:",
-            "blob:",
-            "ws:",
-            "wss:",
-            string.(directives)...,],
-        font_src    = font_src,
-        img_src     = img_src,
-        script_src  = script_src,
-        style_src   = style_src,
-        kwargs...
-    )
+    return Policy(directives...; report_only=report_only, default=false)
 end

@@ -1,9 +1,9 @@
-const CSP_HEADER = "Content-Security-Policy"
-const META_EXCLUDED = [:frame_ancestors, :report_uri, :report_to, :sandbox]
+const META_EXCLUDED = ["frame-ancestors", "report-uri", "report-to", "report-only", "sandbox"]
 
-function Base.Dict(policy::Policy)
-    return OrderedDict{String, Any}([string(prop)=>getproperty(policy, prop) for prop in fieldnames(Policy)])
+function meta_excluded(header::String, exceptions=META_EXCLUDED)::Bool
+    return  any(x->x in exceptions, [header, _directive_name(header)])
 end
+meta_excluded(prop::Symbol)::Bool = meta_excluded(string(prop))
 
 """
     http(::Policy; except, kwargs...)::OrderedDict
@@ -15,46 +15,52 @@ Automatically ignores properties for which values are empty, false or nothing.
 Dict values are the string representation of their value in the policy instance
 """
 function http(policy::Policy; kwargs...)::OrderedDict
-    return http(Dict(policy); kwargs...)
-end
-
-function http(policy::AbstractDict; except::Vector{Symbol}=Symbol[])::OrderedDict
-    http = OrderedDict([_directive_name(k)=>v for (k,v) in policy if !(Symbol(k) in except)])
-    for (key, value) in http
+    # Enforce directive names to "-" separated names as per `https://www.w3.org/TR/CSP3/#grammardef-directive-name`
+    directives = OrderedDict([_directive_name(k)=>v for (k,v) in policy.directives])
+    for (key, value) in directives
         if isnothing(value) || value == false || isempty(value)
-            pop!(http, key)
+            pop!(directives, key)
             continue;
         end
         if any(x->isa(value, x), [Vector, Set, Tuple])
             value = filter(x->!isempty(x), Set(collect(value)))
             if isempty(value)
-                pop!(http, key)
+                pop!(directives, key)
             end
         end
         if any(x->isa(value, x), [Vector, Set, Tuple]) && !isempty(value)
             value = join(value, " ")
         end
-        http[key] = value
+        directives[key] = value
     end
-    return http
+    return directives
 end
 
-function headers(policy::Policy; except::Vector{Symbol}=Symbol[])::Vector{HTTP.Header}
-    values = Dict([k=>(v == true ? "" : v) for (k,v) in http(Dict(policy), except=except) if !isnothing(v) && v !== false && !isempty(v)])
+function headers(policy::Policy)::Vector{HTTP.Header}
+    return [HTTP.Header(policy)]
+end
 
-    csp_header = HTTP.Header(
-        SubString(CSP_HEADER),
-        SubString(join([join(pair, " ") for pair in values], "; "))
+function HTTP.Header(policy::Policy)::HTTP.Header
+    values = Dict([k=>(v == true ? "" : v) for (k,v) in http(policy) if !isnothing(v) && v !== false && !isempty(v)])
+
+    # Is it a report only policy?
+    header = policy.report_only ? SubString(CSP_REPORT_ONLY_HEADER) : SubString(CSP_HEADER)
+    if policy.report_only && !haskey(values, "report-to")
+        @warn "Defining Report-Only policy without `report-to` directive. Ref: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy-Report-Only"
+    end
+    return HTTP.Header(
+        header,
+        SubString(_compile(values))
     )
-    return [csp_header]
 end
 
 function meta(policy::Policy; except=META_EXCLUDED)
-    http = headers(policy, except=except)
-    base_str = "<meta http-equiv=\"Content-Security-Policy\" content=\"{}\""
-    csp_headers = filter(x->first(x) == "Content-Security-Policy", http)
-    if isempty(csp_headers)
-        return string(replace(base_str, "{}"=>""))
-    end
-    return string(replace(base_str, "{}"=>last(csp_headers[1])))
+    dict = http(policy)
+    dict = filter((kv)->!meta_excluded(kv.first, except), dict)
+    base_str = """<meta http-equiv="Content-Security-Policy" content=\"{}\">"""
+    return string(replace(base_str, "{}"=>_compile(dict)))
+end
+
+function _compile(d::AbstractDict)
+    return join([strip(join(pair, " ")) for pair in d], "; ")
 end
