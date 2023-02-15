@@ -50,14 +50,14 @@ function Base.getproperty(policy::Policy, key::Symbol)
     if hasproperty(Policy, key) 
         return getfield(policy, key)
     end
-    return getindex(policy, string(key))
+    return getindex(policy, get_directive(key))
 end
 
 function Base.setproperty!(policy::Policy, prop::Symbol, value)
     if hasproperty(Policy, prop)
         return setfield!(policy, prop, value)
     end
-    return setindex!(policy, value, string(prop))
+    return setindex!(policy, value, get_directive(prop))
 end
 
 function Base.Dict(policy::Policy)::Dict
