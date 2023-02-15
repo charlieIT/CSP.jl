@@ -3,5 +3,6 @@
     "script-src": ["'unsafe-eval'", "scripts.example.com"],
     "object-src": [],
     "style-src": ["styles.example.com"],
-    "upgrade-insecure-requests" : true
+    "upgrade-insecure-requests" : true,
+    "report-only": true
 }
