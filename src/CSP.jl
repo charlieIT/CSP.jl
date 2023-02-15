@@ -24,12 +24,16 @@ module CSP
     using HTTP
     using JSON3
     using OrderedCollections
+    using Random
     using Revise
+    using SHA
 
+    include("constants.jl")
     include("utils.jl")
     include("policy.jl")
     include("http.jl") # headers and meta
     include("json.jl")
+    include("nonce.jl")
 
     function csp(args...; kwargs...)
         return Policy(args...; kwargs...)
