@@ -3,7 +3,7 @@
 A julia library to aid the integration of Content-Security-Policy headers into web applications.
 
 **References** 
-- [MDN CSP](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP).
+- [MDN CSP](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP)
 - [OWASP CSP](https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html)
 - [Strict CSP](https://web.dev/strict-csp/#what-is-a-strict-content-security-policy)
 - [W3C CSP3](https://www.w3.org/TR/CSP3/)
@@ -18,10 +18,11 @@ The package is under active development and changes may occur.
 
 ### Roadmap
 
-- [ ] Register package
-- [ ] Improve support for csp-nonce and csp-hash
-- [ ] Handle CSP violation reports
-- [ ] Export nginx and Apache header configurations
+- Register package
+- Improve support for csp-nonce and csp-hash
+-  Improve default strict policy and improve overall configurability
+- Handle CSP violation reports
+- Export nginx and Apache header configurations
 
 ## Contributions, suggestions, questions
 
@@ -88,7 +89,7 @@ policy(
 ```
 Modify single directive
 ```julia
-# Modify individually via header name
+# Modify individually via directive name
 policy["img-src"] = CSP.wildcard # "*"
 ```
 
@@ -98,24 +99,25 @@ Definition and manipulation of custom directives is supported.
 ```julia
 using CSP
 
-policy = Policy(default=true)
-policy(custom_header = ("*", "any"))
-policy["custom-directive"] = true
+policy = Policy("custom"=>true, default=true) # Also apply default directives
+policy["custom-directive"] = ("'self'", "blob:")
 ```
 ```json
 {
     [...],
-    "custom_header": [
-        "*",
-        "any"
+    "custom-directive": [
+        "'self'",
+        "blob:"
     ],
-    "custom-directive": true
+    "custom": true
 }
 ```
-```jldoctest
+```julia
+policy(custom_header = ("*", "any"))
 string(policy)
-
-"default-src 'self'; img-src 'self'; report-to default; custom-header any *; custom-directive"
+```
+```text/plain
+default-src 'self'; report-to default; custom; custom-directive 'self' blob:; custom-header any *;
 ```
 
 ### Build `http` header
@@ -150,12 +152,12 @@ CSP.http(policy)
 OrderedCollections.OrderedDict{String, Any} with 3 entries:
   "img-src"     => "data: 'self'"
   "default-src" => "'self'"
-  "report-uri"  => "/api/csp/reports"
+  "report-uri"  => "/api/reports"
 ```
 
 ## Web example
 
-Mockup web application with dynamic CSP policies, that can also receive CSP violation reports.
+**Mockup** web application with dynamic CSP policies, that can also receive CSP violation reports.
 
 The app allows route handlers to tailor the CSP Policy on each response.
 ```julia
@@ -164,7 +166,7 @@ using CSP, Dates, HTTP, JSON3, Random, Sockets
 """
 A middleware that will set a restrictive default policy.
 
-Allows route handlers to change the CSP Policy, based on a page's specific use-case
+Allows route handlers to change the CSP Policy
 """
 function CSPMiddleware(next)
     return function(request::HTTP.Request)
@@ -191,7 +193,7 @@ function CSPMiddleware(next)
                     policy = policy(route_policy.directives...)
                 end 
             end
-                # Check whether header was not yet defined
+            # Check whether header was not yet defined
             if !HTTP.hasheader(response, CSP.CSP_HEADER)
                 # Set CSP policy header
                 HTTP.setheader(response, HTTP.Header(policy))
@@ -273,6 +275,8 @@ See also: [web example](/examples/web).
 
 ## Policy from a JSON file
 
+[Example configuration.json](/examples/conf.json)
+
 ```julia
 policy = Policy("/path/to/conf.json")
 ```
@@ -295,54 +299,6 @@ julia> policy["script-src"]
  "'unsafe-eval'"
  "https://www.google-analytics.com"
  "'unsafe-inline'"
-```
-
-**Example conf.json** 
-```json
-{
-    "base-uri": [],
-    "child-src": [],
-    "connect-src": [],
-    "default-src": [
-        "'unsafe-eval'",
-        "'unsafe-inline'",
-        "data:",
-        "filesystem:",
-        "about:",
-        "blob:",
-        "ws:",
-        "wss:"
-    ],
-    "font-src": [],
-    "form-action": "'self'",
-    "frame-ancestors": [],
-    "frame-src": [],
-    "img-src": [
-        "'self'"
-    ],
-    "manifest-src": [],
-    "media-src": [],
-    "object-src": [],
-    "prefetch-src": [],
-    "report-to": "default",
-    "report-uri": "/csp_report_endpoint",
-    "sandbox": [],
-    "script-src": [
-        "https://www.google-analytics.com",
-        "'unsafe-inline'",
-        "'unsafe-eval'"
-    ],
-    "script-src-attr": [],
-    "script-src-elem": [],
-    "style-src": "'self'",
-    "style-src-attr": [],
-    "style-src-elem": [],
-    "upgrade-insecure-requests": false,
-    "worker-src": [],
-    "trusted-types": [],
-    "require-trusted-types-for": [],
-    "report-only": false
-}
 ```
 
 # API Reference

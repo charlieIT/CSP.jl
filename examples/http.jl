@@ -21,5 +21,5 @@ CSP.http(policy)
 OrderedCollections.OrderedDict{String, Any} with 3 entries:
   "img-src"     => "data: 'self'"
   "default-src" => "'self'"
-  "report-uri"  => "/api/csp/reports"
+  "report-uri"  => "/api/reports"
 =#

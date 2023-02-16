@@ -19,10 +19,26 @@ policy(
     img_src = ("'self'", "data:")
 )
 
-# Modify individually via header name
+# Modify individually via directive name
 policy["img-src"] = CSP.wildcard # "*"
 
 # Definition and manipulation of custom directives is supported.
-policy = Policy(default=true)
+policy = Policy("custom"=>true, default=true) # Also apply default directives
+policy["custom-directive"] = ("'self'", "blob:")
+#=
+{
+    [...],
+    "custom-directive": [
+        "'self'",
+        "blob:"
+    ],
+    "custom": true
+}
+=#
+
 policy(custom_header = ("*", "any"))
-policy["custom-directive"] = true
+string(policy)
+
+#= ~ similar to
+default-src 'self'; report-to default; custom; custom-directive 'self' blob:; custom-header any *;
+=#

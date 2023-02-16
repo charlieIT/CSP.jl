@@ -1,0 +1,44 @@
+{
+    "base-uri": [],
+    "child-src": [],
+    "connect-src": [],
+    "default-src": [
+        "'unsafe-eval'",
+        "'unsafe-inline'",
+        "data:",
+        "filesystem:",
+        "about:",
+        "blob:",
+        "ws:",
+        "wss:"
+    ],
+    "font-src": [],
+    "form-action": "'self'",
+    "frame-ancestors": [],
+    "frame-src": [],
+    "img-src": [
+        "'self'"
+    ],
+    "manifest-src": [],
+    "media-src": [],
+    "object-src": [],
+    "prefetch-src": [],
+    "report-to": "default",
+    "report-uri": "/csp_report_endpoint",
+    "sandbox": [],
+    "script-src": [
+        "https://www.google-analytics.com",
+        "'unsafe-inline'",
+        "'unsafe-eval'"
+    ],
+    "script-src-attr": [],
+    "script-src-elem": [],
+    "style-src": "'self'",
+    "style-src-attr": [],
+    "style-src-elem": [],
+    "upgrade-insecure-requests": false,
+    "worker-src": [],
+    "trusted-types": [],
+    "require-trusted-types-for": [],
+    "report-only": false
+}
