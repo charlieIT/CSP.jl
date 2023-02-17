@@ -1,24 +1,20 @@
 mutable struct Policy
     directives::AbstractDict{String, DirectiveTypes}
     report_only::Bool
-    #nonces::NonceStore
         
     function Policy(directives::AbstractDict, report_only::Bool=false)
         directives = Base.convert(OrderedDict{String, DirectiveTypes}, directives)
         return new(directives, report_only)
     end
 
-    function Policy(; default::Bool=false, report_only::Bool=false, kwargs...)
-        tmp = OrderedDict([get_directive(k)=>v for (k,v) in Dict(kwargs...)])
+    function Policy(directives::Pair...; default::Bool=false, report_only::Bool=false, kwargs...)
+        tmp = OrderedDict{Any, Any}([get_directive(k)=>v for (k,v) in Dict(kwargs...)])
+        d = OrderedDict{Any, Any}([first(p)=>last(p) for p in collect(directives)])
+        merge!(d, tmp) # merge kw based directive into directives
         if default
-            tmp = merge(DEFAULT_POLICY, tmp)
+            d = merge(DEFAULT_POLICY, tmp)
         end
-        return Policy(tmp, report_only)
-    end
-
-    function Policy(directives::Pair...; default::Bool=false, report_only::Bool=false)
-        d = Dict{Any, Any}([Symbol(first(p))=>last(p) for p in collect(directives)])
-        return Policy(;default=default, report_only=report_only, d...)
+        return Policy(d, report_only)
     end
 end
 
@@ -67,7 +63,7 @@ function Base.Dict(policy::Policy)::Dict
 end
     
 function Base.string(policy::Policy)
-    return last(HTTP.Header(policy))
+    return string(last(HTTP.Header(policy)))
 end
 
 function Policy(json::String)
@@ -76,6 +72,21 @@ function Policy(json::String)
     end
     input = JSON3.read(json, Dict)
     return Base.convert(Policy, input)
+end
+
+function Base.convert(::Type{Policy}, header::String)
+    tmp = Policy(default=false)
+    directives = string.(strip.(split(header, ";")))
+    #parts = [match(r"(?-s)(\S+) +(.+)", x) for x in directives]
+    for directive in directives
+        dir, parts... = string.(split(directive, " "))
+        value = parts
+        if isempty(parts)
+            value = true
+        end
+        tmp[string(dir)] = value
+    end
+    return tmp
 end
 
 function Base.convert(::Type{Policy}, d::AbstractDict)

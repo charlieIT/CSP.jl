@@ -16,7 +16,7 @@ Dict values are the string representation of their value in the policy instance
 """
 function http(policy::Policy; kwargs...)::OrderedDict
     # Enforce directive names to "-" separated names as per `https://www.w3.org/TR/CSP3/#grammardef-directive-name`
-    directives = OrderedDict([_directive_name(k)=>v for (k,v) in policy.directives])
+    directives = OrderedDict{Any, Any}([_directive_name(k)=>v for (k,v) in policy.directives])
     for (key, value) in directives
         if isnothing(value) || value == false || isempty(value)
             pop!(directives, key)
@@ -36,10 +36,6 @@ function http(policy::Policy; kwargs...)::OrderedDict
     return directives
 end
 
-function headers(policy::Policy)::Vector{HTTP.Header}
-    return [HTTP.Header(policy)]
-end
-
 function HTTP.Header(policy::Policy)::HTTP.Header
     values = Dict([k=>(v == true ? "" : v) for (k,v) in http(policy) if !isnothing(v) && v !== false && !isempty(v)])
 
@@ -50,7 +46,7 @@ function HTTP.Header(policy::Policy)::HTTP.Header
     end
     return HTTP.Header(
         header,
-        SubString(_compile(values))
+        _compile(values)
     )
 end
 
