@@ -1,0 +1,13 @@
+{ "group": "csp-endpoint",
+    "max_age": 10886400,
+    "endpoints": [
+        { 
+            "url": "https://example.com/csp-reports" 
+        },
+        {
+            "url": "https://localhost:3000/reports",
+            "failures": 1,
+            "name": "reports"
+        }
+    ]
+}

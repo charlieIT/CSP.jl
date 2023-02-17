@@ -1,0 +1,13 @@
+[
+    {
+        "url": "https://localhost:3000/report"
+    },
+    {
+        "url": "https://localhost:3000/report",
+        "name": "default"
+    },
+    {
+        "url": "https://localhost:3000/report",
+        "failures": 1
+    }
+]

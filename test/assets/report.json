@@ -1,0 +1,13 @@
+{
+    "blocked-uri": "inline",
+    "column-number": 1,
+    "disposition": "enforce",
+    "document-uri": "http://127.0.0.1/restrictive",
+    "effective-directive": "script-src-elem",
+    "line-number": 9,
+    "original-policy": "default-src 'self'; frame-ancestors none; report-uri http://127.0.0.1/reports/1676648208; base-uri none; sandbox allow-scripts allow-modals; script-src 'nonce-d150b5a8ebf4ed4a4f4a2c080c39d18662fa4286e97a535c9f7428a11181913d'; object-src none",
+    "referrer": "",
+    "source-file": "http://127.0.0.1/restrictive",
+    "status-code": 200,
+    "violated-directive": "script-src-elem"
+}

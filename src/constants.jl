@@ -1,5 +1,6 @@
 const CSP_HEADER = "Content-Security-Policy"
 const CSP_REPORT_ONLY_HEADER = "Content-Security-Policy-Report-Only"
+const REPORT_MIMETYPES = ["application/json", "application/csp-report", "application/reports+json"] # https://www.w3.org/TR/reporting-1/#endpoint
 
 # "'unsafe-dynamic'"
 const wildcard          = "*"

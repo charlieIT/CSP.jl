@@ -27,9 +27,11 @@ module CSP
     using Random
     using Revise
     using SHA
+    using StructTypes
 
     include("constants.jl")
     include("utils.jl")
+    include("report.jl") # WIP
     include("policy.jl")
     include("http.jl") # headers and meta
     include("json.jl")
