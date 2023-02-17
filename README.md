@@ -39,7 +39,7 @@ All are welcome, as well as feature requests and bug reports. Please open an iss
 ## Installation
 
 While unregistered, the package can be installed via package manager by specifying a URL to the repository
-```julia
+```
 pkg> add https://github.com/charlieIT/CSP.jl
 ```
 
@@ -121,6 +121,8 @@ default-src 'self'; report-to default; custom; custom-directive 'self' blob:; cu
 ```
 
 ### Build `http` header
+
+**Content-Security-Policy** header
 ```julia
 using CSP, HTTP
 
@@ -128,6 +130,13 @@ HTTP.Header(Policy(default=true))
 ```
 ```julia
 "Content-Security-Policy" => "default-src 'self'; frame-ancestors none; base-uri none; report-to default; sandbox; script-src 'strict-dynamic'; object-src none"
+```
+**Report-Only** header
+```julia
+HTTP.Header(Policy("default-src"=>CSP.self, report_only=true))
+```
+```julia
+"Content-Security-Policy-Report-Only" => "default-src 'self'; frame-ancestors none; base-uri none; report-to default; script-src 'strict-dynamic'; object-src none"
 ```
 
 ### Build `<meta>` element
@@ -148,7 +157,7 @@ policy = csp("default-src"=>CSP.self, "img-src"=>(CSP.self, CSP.data), "report-u
 
 CSP.http(policy)
 ```
-```julia
+```
 OrderedCollections.OrderedDict{String, Any} with 3 entries:
   "img-src"     => "data: 'self'"
   "default-src" => "'self'"
@@ -281,7 +290,7 @@ See also: [web example](/examples/web).
 policy = Policy("/path/to/conf.json")
 ```
 ```jldoctest
-julia> policy["default_src"]
+julia> policy["default-src"]
 
 8-element Vector{String}:
  "'unsafe-eval'"
@@ -297,8 +306,8 @@ julia> policy["script-src"]
 
 3-element Vector{String}:
  "'unsafe-eval'"
- "https://www.google-analytics.com"
  "'unsafe-inline'"
+ "https://www.google-analytics.com"
 ```
 
 # API Reference
@@ -309,7 +318,7 @@ julia> policy["script-src"]
 ```julia
 const DEFAULT_POLICY
 ```
-A default, restrictive policy based on various CSP recommendations. Used when creating a Policy where `default = true`.
+ _Work in progress._ A default, restrictive policy based on various CSP recommendations. Used when creating a Policy where `default = true`. 
 
 **See also:** [OWASP CSP cheatsheet](https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html), [mdn csp docs](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP), [csp.withgoogle.com](https://csp.withgoogle.com/docs/index.html), [CSP Is Dead, Long Live CSP!](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/45542.pdf) and [strict-csp](https://web.dev/strict-csp/).
 
@@ -343,15 +352,16 @@ julia> Policy()
 ```
 ------------------
 ```julia
-Policy(directives::Pair...; default=false, report_only=false)
+Policy(directives::Pair...; default=false, report_only=false, kwargs...)
 ```
 | Parameter | Type     | Description                |
 | :-------- | :------- | :------------------------- |
 | `directives` | `Pair{String,DirectiveTypes}` | Individual policies as a Pair.
 | `default` | `Bool` | **Optional**  Whether to add default directives and default values. Defaults to `false`|
 | `report_only` | `Bool` | **Optional**  Whether to define Policy as [report only](Content-Security-Policy-Report-Only). Defaults to `false`|
+| `kwargs` | `Directives` | **Optional** Directives as keyword arguments. Automatically replaces `_` with `-` in known directives.|
 ```julia
-Policy("script-src"=>"https://example.com/", "img-src"=>"*", default=false, report_only=true)
+Policy("script-src"=>"https://example.com/", "img-src"=>"*", report_only=true)
 ```
 ```json
 {
@@ -360,17 +370,6 @@ Policy("script-src"=>"https://example.com/", "img-src"=>"*", default=false, repo
     "report-only": true
 }
 ```
-----------------
-```julia
-Policy(; default=false, report_only=false, directives...)
-```
-| Parameter | Type     | Description                |
-| :-------- | :------- | :------------------------- |
-| `default` | `Bool` | **Optional**  Whether to add default directives and default values. Defaults to `false`|
-| `report_only` | `Bool` | **Optional**  Whether to define Policy as [report only](Content-Security-Policy-Report-Only). Defaults to `false`|
-| `directives` | `Directives` | Directives as keyword arguments |
-
-Utility constructor for using `directives` as if struct properties. Automatically replaces `_` with `-` in known directives.
 ```julia
 policy = Policy(
      # Set default-src
