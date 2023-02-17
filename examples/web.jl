@@ -51,7 +51,7 @@ end
 """
 Handle posted CSP Reports
 """
-function report(request::HTTP.Request)
+function reports(request::HTTP.Request)
     report = String(request.body)
     # Each report is posted to /reports/{timestamp}
     timestamp = Base.parse(Int, request.context[:params]["timestamp"])
@@ -111,7 +111,7 @@ const csp_router = HTTP.Router()
 HTTP.register!(csp_router, "GET", "/restrictive", restrictive)
 HTTP.register!(csp_router, "GET", "/permissive", permissive)
 # Handle incoming CSP reports
-HTTP.register!(csp_router, "POST", "/reports/{timestamp}", report)
+HTTP.register!(csp_router, "POST", "/reports/{timestamp}", reports)
 
 server = HTTP.serve!(csp_router |> CSPMiddleware, ip"0.0.0.0", 80)
 
