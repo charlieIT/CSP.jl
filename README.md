@@ -423,3 +423,76 @@ Build a Policy from a JSON configuration.
 See also: [Import from JSON](#policy-from-a-json-file)
 
 ----------------------------
+
+## [HTTP](@ref)
+
+```julia
+HTTP.Header(policy::Policy)
+```
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `policy` | `Policy` | A `Policy` instance |
+
+Build CSP Header
+
+<details>
+<summary>Example</summary>
+
+```julia
+HTTP.Header(Policy(default=true))
+```
+```julia
+"Content-Security-Policy" => "base-uri none; default-src 'self'; frame-ancestors none; object-src none; report-to default; script-src 'strict-dynamic'"
+```
+</details>
+
+----------------------------
+
+```julia
+CSP.meta(policy::Policy; except=CSP.META_EXCLUDED)
+```
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `policy` | `Policy` | A `Policy` instance |
+| `except` | `Vector{String}` | **Optional** Set of directives to exclude from meta element. Defaults to CSP.META_EXCLUDED |
+
+Build `<meta>` element, ignoring directives in `except`
+
+<details>
+<summary>Example</summary>
+
+```julia
+CSP.meta(Policy(report_to="default", default_src="'self'"))
+```
+```xml
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'">
+```
+</details>
+
+-------------------------------
+
+
+```julia
+CSP.http(policy::Policy)
+```
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `policy` | `Policy` | A `Policy` instance |
+
+Obtain CSP headers as Dict
+
+<details>
+<summary>Example</summary>
+
+```julia
+policy = csp("default-src"=>CSP.self, "img-src"=>(CSP.self, CSP.data), "report-uri"=>"/api/reports")
+
+CSP.http(policy)
+```
+```
+OrderedCollections.OrderedDict{String, Any} with 3 entries:
+  "img-src"     => "data: 'self'"
+  "default-src" => "'self'"
+  "report-uri"  => "/api/reports"
+```
+</details>
