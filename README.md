@@ -1,6 +1,6 @@
 # CSP
 
-A julia library to aid the integration of Content-Security-Policy headers into web applications.
+A Julia library to aid the integration of **[Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP)** headers into web applications.
 
 **References** 
 - [MDN CSP](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP)
@@ -16,13 +16,13 @@ A julia library to aid the integration of Content-Security-Policy headers into w
 
 The package is under active development and changes may occur.
 
-### Roadmap
+### ToDo
 
-- Register package
-- Improve support for csp-nonce and csp-hash
--  Improve default strict policy and improve overall configurability
-- Handle CSP violation reports
-- Export nginx and Apache header configurations
+- [ ] Register package
+- [ ] Improve support for csp-nonce and csp-hash
+- [ ] Improve default strict policy and improve overall configurability
+- [ ] Handle CSP violation reports
+- [ ] Export nginx and Apache header configurations
 
 ## Contributions, suggestions, questions
 
@@ -39,16 +39,19 @@ All are welcome, as well as feature requests and bug reports. Please open an iss
 ## Installation
 
 While unregistered, the package can be installed via package manager by specifying a URL to the repository
-```
+```julia
 pkg> add https://github.com/charlieIT/CSP.jl
 ```
 
 ## Usage examples
 
-### Build a Content Security Policy
 ```julia
 using CSP
-policy = Policy(
+```
+
+### Build a Content Security Policy
+```julia
+Policy(
    # Set fallback for all fetch directives
     "default-src"=>"*",
     # Set valid sources of images and favicons
@@ -59,6 +62,9 @@ policy = Policy(
     "some-custom-directive"=>["foo", "bar"]
 )
 ```
+<details>
+<summary>Output</summary>
+
 ```json
 {
     "default-src": "*",
@@ -74,6 +80,8 @@ policy = Policy(
     "report-only": false
 }
 ```
+</details>
+
 See also: [Policy](#policy), [Strict Policy](#strict-policy).
 
 ### Edit existing policy
@@ -93,34 +101,7 @@ Modify single directive
 policy["img-src"] = CSP.wildcard # "*"
 ```
 
-### Custom directives
-
-Definition and manipulation of custom directives is supported.
-```julia
-using CSP
-
-policy = Policy("custom"=>true, default=true) # Also apply default directives
-policy["custom-directive"] = ("'self'", "blob:")
-```
-```json
-{
-    [...],
-    "custom-directive": [
-        "'self'",
-        "blob:"
-    ],
-    "custom": true
-}
-```
-```julia
-policy(custom_header = ("*", "any"))
-string(policy)
-```
-```text/plain
-default-src 'self'; report-to default; custom; custom-directive 'self' blob:; custom-header any *;
-```
-
-### Build `http` header
+### Build `http` headers
 
 **Content-Security-Policy** header
 ```julia
@@ -129,14 +110,19 @@ using CSP, HTTP
 HTTP.Header(Policy(default=true))
 ```
 ```julia
-"Content-Security-Policy" => "default-src 'self'; frame-ancestors none; base-uri none; report-to default; sandbox; script-src 'strict-dynamic'; object-src none"
+"Content-Security-Policy" => "base-uri none; default-src 'self'; frame-ancestors none; object-src none; report-to default; script-src 'strict-dynamic'"
 ```
 **Report-Only** header
 ```julia
-HTTP.Header(Policy("default-src"=>CSP.self, report_only=true))
+policy = Policy(
+        "default-src"=>CSP.self,
+        "report-to"=>"some-endpoint",
+        report_only=true)
+        
+HTTP.Header(policy)
 ```
 ```julia
-"Content-Security-Policy-Report-Only" => "default-src 'self'; frame-ancestors none; base-uri none; report-to default; script-src 'strict-dynamic'; object-src none"
+"Content-Security-Policy-Report-Only" => "default-src 'self'; report-to some-endpoint"
 ```
 
 ### Build `<meta>` element
@@ -145,7 +131,7 @@ Construction will automatically ignore directives that are not supported in the 
 
 See also [mdn csp directives](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP).
 ```julia
-CSP.meta(Policy(report_to = "default", default_src="'self'"))
+CSP.meta(Policy(report_to="default", default_src="'self'"))
 ```
 ```xml
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'">
@@ -157,21 +143,27 @@ policy = csp("default-src"=>CSP.self, "img-src"=>(CSP.self, CSP.data), "report-u
 
 CSP.http(policy)
 ```
+<details>
+<summary>Output</summary>
+
 ```
 OrderedCollections.OrderedDict{String, Any} with 3 entries:
   "img-src"     => "data: 'self'"
   "default-src" => "'self'"
   "report-uri"  => "/api/reports"
 ```
+</details>
 
 ## Web example
 
 **Mockup** web application with dynamic CSP policies, that can also receive CSP violation reports.
 
-The app allows route handlers to tailor the CSP Policy on each response.
+The example app will allow route handlers to tailor the CSP Policy on each response.
 ```julia
 using CSP, Dates, HTTP, JSON3, Random, Sockets
-
+```
+**Middleware for adding CSP header to each response**
+```julia
 """
 A middleware that will set a restrictive default policy.
 
@@ -212,7 +204,9 @@ function CSPMiddleware(next)
 	return respond(next(request))
     end
 end
-
+```
+**Handler for posted csp violation reports**
+```julia
 """
 Handle posted CSP Reports
 """
@@ -227,7 +221,9 @@ function report(request::HTTP.Request)
 
     return HTTP.Response(200, report)
 end
-
+```
+**A page with restrictive csp policy**
+```julia
 function restrictive(request::HTTP.Request)
     # Obtain a nonce
     nonce = CSP.csp_nonce()
@@ -251,7 +247,9 @@ function restrictive(request::HTTP.Request)
     """
     return HTTP.Response(200, html)
 end
-
+```
+**A page with a more permissive csp policy**
+```julia
 function permissive(request::HTTP.Request)
     # Set permissive script-src to allow all inline scripts
     request.context[:csp] = csp("script-src"=>("'self'", "'unsafe-inline'"), "sandbox"=>false)
@@ -271,7 +269,9 @@ function permissive(request::HTTP.Request)
     """
     return HTTP.Response(200, html)
 end
-
+```
+**Setup http routing**
+```julia
 const csp_router = HTTP.Router()
 HTTP.register!(csp_router, "GET", "/restrictive", restrictive)
 HTTP.register!(csp_router, "GET", "/permissive", permissive)
@@ -289,9 +289,14 @@ See also: [web example](/examples/web).
 ```julia
 policy = Policy("/path/to/conf.json")
 ```
-```jldoctest
-julia> policy["default-src"]
+```julia
+policy["default-src"]
+```
 
+<details>
+<summary>Output</summary>
+
+```
 8-element Vector{String}:
  "'unsafe-eval'"
  "'unsafe-inline'"
@@ -301,14 +306,22 @@ julia> policy["default-src"]
  "blob:"
  "ws:"
  "wss:"
+```
+</details>
 
+ ```julia
 julia> policy["script-src"]
+```
+<details>
+<summary>Output</summary>
 
+```
 3-element Vector{String}:
  "'unsafe-eval'"
  "'unsafe-inline'"
  "https://www.google-analytics.com"
-```
+ ```
+</details>
 
 # API Reference
 
@@ -316,7 +329,7 @@ julia> policy["script-src"]
 
 ### Strict Policy 
 ```julia
-const DEFAULT_POLICY
+DEFAULT_POLICY
 ```
  _Work in progress._ A default, restrictive policy based on various CSP recommendations. Used when creating a Policy where `default = true`. 
 
@@ -360,6 +373,9 @@ Policy(directives::Pair...; default=false, report_only=false, kwargs...)
 | `default` | `Bool` | **Optional**  Whether to add default directives and default values. Defaults to `false`|
 | `report_only` | `Bool` | **Optional**  Whether to define Policy as [report only](Content-Security-Policy-Report-Only). Defaults to `false`|
 | `kwargs` | `Directives` | **Optional** Directives as keyword arguments. Automatically replaces `_` with `-` in known directives.|
+<details>
+<summary>Examples</summary>
+
 ```julia
 Policy("script-src"=>"https://example.com/", "img-src"=>"*", report_only=true)
 ```
@@ -392,6 +408,8 @@ policy = Policy(
     "report-only": false
 }
 ```
+</details>
+
 -------------------------
 ```julia
 Policy(json::String)

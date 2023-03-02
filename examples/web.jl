@@ -3,7 +3,7 @@ using CSP, Dates, HTTP, JSON3, Random, Sockets
 #=
 Simple web application with dynamic CSP policies, that can also receive CSP violation reports.
 
-The app allows route handlers to tailor the CSP Policy on each response.
+The example app will allow route handlers to tailor the CSP Policy on each response.
 =#
 
 """
@@ -16,13 +16,13 @@ function CSPMiddleware(next)
 
 		function respond(response::HTTP.Response)
             timestamp = string(round(Int, datetime2unix(now())))
-            
+
             # A default restrictive policy
 			policy = csp(
-                default = true, 
-                default_src = "'self'", 
+                default = true,
+                default_src = "'self'",
                 script_src = "none",
-                report_to = false, 
+                report_to = false,
                 sandbox = true,
                 report_uri = "/reports/$timestamp") # report to specific endpoint
 
@@ -35,7 +35,7 @@ function CSPMiddleware(next)
 
                     # Merge default with handler provided policy
 					policy = policy(route_policy.directives...)
-				end 
+				end
 			end
             # Check whether header was not yet defined
 			if !HTTP.hasheader(response, CSP.CSP_HEADER)
@@ -76,7 +76,7 @@ function restrictive(request::HTTP.Request)
 				<script type="text/javascript", nonce='$nonce'>
                     alert('I can execute!');
 				</script>
-                
+
                 <!-- This should not execute -->
                 <script type="text/javascript">
 					alert('Not authorised!');
@@ -116,7 +116,7 @@ HTTP.register!(csp_router, "POST", "/reports/{timestamp}", reports)
 server = HTTP.serve!(csp_router |> CSPMiddleware, ip"0.0.0.0", 80)
 
 #= Example custom policy log for `restrictive endpoint`
-    
+
 [ Info: Custom policy: sandbox allow-scripts allow-modals; script-src 'nonce-c45e32868c90f16e0c7276bf11c3e5f7a0e9d59b4edba2989e9253358b2b1890'
 =#
 
