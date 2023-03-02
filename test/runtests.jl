@@ -1,9 +1,24 @@
 using CSP
 using HTTP
 using JSON3
+using Random
 using Test
 
-@testset "CSP.Policy" begin 
+import CSP.compile
+import CSP.compile_group
+# constants
+import CSP.data
+import CSP.wildcard
+import CSP.self
+# Utils
+import CSP.DIRECTIVES
+import CSP._to_prop_name
+import CSP._directive_name
+import CSP.get_directive
+import CSP.meta_excluded
+import CSP.META_EXCLUDED
+
+@testset "CSP Policy" begin
     policy = Policy(default=true);
     @test !policy.upgrade_insecure_requests
     @test !policy.sandbox
@@ -13,70 +28,54 @@ using Test
         http_name = CSP.get_directive(key)
         @test policy[http_name] == getproperty(policy, Symbol(key))
     end
+
+    @testset "Modify Policy" begin
+        p = Policy(
+            "img-src"=>(self, data),
+            "object-src"=>[self],
+            "report_uri"=>"/some/endpoint",
+            "custom-header"=>false,
+            "custom-directive"=>(1,true,"value"),
+            default=true,
+            report_only = true);
+
+        p("object-src"=>wildcard)
+        @test p.object_src == wildcard
+        p(report_only = false)
+        @test p.report_only == false
+    end
 end
 
-# @testset "CSP Dict and http" begin 
-#     policy = Policy(
-#         default_src = CSP.self,
-#         report_uri = "https://example.com",
-#         sandbox = "allow-downloads",
-#         report_to = "default",
-#         frame_ancestors = CSP.wildcard,
-#         upgrade_insecure_requests = true
-#     )
-#     dpolicy = Dict(policy)
-#     @test all(x->Symbol(x) in fieldnames(Policy), keys(dpolicy))
-#     hpolicy = CSP.http(policy)
-#     for prop in fieldnames(Policy)
-#         val = getproperty(policy, prop)
-#         if isnothing(val) || isempty(val) || val == false
-#             @test !(CSP._directive_name(prop) in keys(hpolicy))
-#         end
-#     end
-# end
+@testset "Policy compilation" begin
+    @test compile((1,2,false,true,"",Dict(),[], ["Foo", "Bar"])) == "1 2 Foo Bar"
+    @test isempty(compile(String[]))
+    @test isempty(compile(Set(String[])))
+    @test compile(["A","","B"]) == "A B"
+    @test compile(true) && isempty(compile(false)) && isempty(compile(nothing))
+    _some_r = randstring(12)
+    @test isempty(compile("")) && compile(_some_r) == _some_r &&
+          isempty(compile("a"=>"")) && compile("a"=>_some_r) == "a $(_some_r)"
+    @test compile("foo"=>true) == "foo" && isempty(compile("foo"=>false))
+    _some_r = rand()
+    @test compile(_some_r) == "$(_some_r)"
 
-# @testset "CSP.headers" begin
-#     policy = Policy(
-#         default_src = nothing,
-#         img_src = nothing,
-#         report_to = nothing,
-#     );
-#     test_headers = CSP.headers(policy)
-#     @test !isempty(test_headers)
-#     csp_header = first(test_headers)
-#     @test first(csp_header) == CSP.CSP_HEADER
-#     @test isempty(last(csp_header))
-#     @test policy["default-src"] === nothing
+    policy = csp("default-src"=>self, "img-src"=>(self, data), "report-uri"=>"/api/reports")
+    @test string(policy) == compile(policy) == compile_group(policy.directives)
+    @test compile(policy) == "default-src 'self'; img-src 'self' data:; report-uri /api/reports"
+end
 
-#     # update properties in-place
-#     policy(
-#         default_src = CSP.none,
-#         report_uri = "https://example.com",
-#         sandbox = "allow-downloads",
-#         report_to = "default",
-#         frame_ancestors = CSP.wildcard
-#     )
-    
-#     csp_header = first(HTTP.Header(policy))
-#     csp_directives = last(csp_header)
-#     @test csp_directives == string(policy)
-#     @test occursin("default-src none", csp_directives)
-#     @test occursin("frame-ancestors *", csp_directives)
-#     @test occursin("report-to default", csp_directives)
-#     @test occursin("report-uri https://example.com", csp_directives)
-#     @test occursin("sandbox allow-downloads", csp_directives)
+@testset "Test utils" begin
+    test_directives = replace.(DIRECTIVES, "-"=>"_")
+    @test sort(test_directives) == sort(_to_prop_name.(DIRECTIVES))
+    @test sort(test_directives) == sort(_to_prop_name.(Symbol.(DIRECTIVES)))
 
-#     csp_header = first(CSP.headers(policy, except=CSP.META_EXCLUDED))
-#     csp_directives = last(csp_header)
-#     @test csp_directives == "default-src none"
+    @test sort(_directive_name.(test_directives)) == sort(DIRECTIVES)
+    @test sort(_directive_name.(Symbol.(test_directives))) == sort(DIRECTIVES)
 
-#     @testset "JSON serialization" begin
-#         policy = Policy("assets/small.json")
-#         cpolicy = Base.convert(Policy, JSON3.read(String(read("assets/small.json")), Dict))
-#         @test policy["default-src"] == Set(["'self'"]) == cpolicy.default_src
-#         @test isempty(policy["object-src"]) && isempty(cpolicy.object_src)
-#         @test policy["upgrade-insecure-requests"] == cpolicy.upgrade_insecure_requests == true
-#         @test policy.style_src == Set(["styles.example.com"])
-#         @test all(x->x in ["'unsafe-eval'", "scripts.example.com"], policy["script-src"])
-#     end
-# end
+    [@test get_directive(d, "error") == d for d in DIRECTIVES]
+    @test get_directive("a_b_custom", "error") == "error" &&
+          get_directive("custom-header") == "custom-header"
+
+    @test all(x->meta_excluded(x) && meta_excluded(Symbol(x)), META_EXCLUDED)
+    @test all(x->meta_excluded(x), _to_prop_name.(META_EXCLUDED))
+end
