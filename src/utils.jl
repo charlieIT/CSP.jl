@@ -15,3 +15,10 @@ function get_directive(key, default::String=string(key))::String
     end
     return default
 end
+
+const META_EXCLUDED = ["frame-ancestors", "report-uri", "report-to", "report-only", "sandbox"]
+
+function meta_excluded(header::String, exceptions=META_EXCLUDED)::Bool
+    return any(x->x in exceptions, [header, _directive_name(header)])
+end
+meta_excluded(prop::Symbol, args...)::Bool = meta_excluded(string(prop), args...)
