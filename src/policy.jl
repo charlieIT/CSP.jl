@@ -1,7 +1,7 @@
 mutable struct Policy
     directives::AbstractDict{String, DirectiveTypes}
     report_only::Bool
-        
+
     function Policy(directives::AbstractDict, report_only::Bool=false)
         directives = Base.convert(OrderedDict{String, DirectiveTypes}, directives)
         return new(directives, report_only)
@@ -33,7 +33,7 @@ end
 function Base.getindex(policy::Policy, idx::String)
     return getindex(getfield(policy, :directives), idx)
 end
-    
+
 function Base.setindex!(policy::Policy, value, idx::String)
     return policy(;[(Symbol(idx), value)]...)
 end
@@ -43,7 +43,7 @@ function hasproperty(::Type{Policy}, prop::Symbol)
 end
 
 function Base.getproperty(policy::Policy, key::Symbol)
-    if hasproperty(Policy, key) 
+    if hasproperty(Policy, key)
         return getfield(policy, key)
     end
     return getindex(policy, get_directive(key))
@@ -60,10 +60,6 @@ function Base.Dict(policy::Policy)::Dict
     directives = Base.convert(Dict{String, Any}, getfield(policy, :directives))
     [directives[_directive_name(prop)] = getfield(policy, prop) for prop in fieldnames(Policy) if prop != :directives]
     return directives
-end
-    
-function Base.string(policy::Policy)
-    return string(last(HTTP.Header(policy)))
 end
 
 function Policy(json::String)
@@ -101,4 +97,69 @@ function Base.convert(::Type{Policy}, d::AbstractDict)
         directives[k] = v
     end
     return Policy(directives...; report_only=report_only, default=false)
+end
+
+"""
+    compile(policy::Policy)::String
+"""
+function compile(policy::Policy)::String
+    return compile_group(policy.directives)
+end
+
+function compile_group(directives::AbstractDict)::String
+    elements = [strip(compiled) for compiled in [compile(p) for p in directives] if !isempty(compiled)]
+    return join(string.(elements), "; ")
+end
+
+function compile(p::Pair)
+    tmp = Pair(first(p), last(p)) # force values to specific types by constructing new Pair
+    return compile(first(tmp), last(tmp))
+end
+
+# generic behaviour
+function compile(dir::String, value)
+    return string(dir, " ", compile(value))
+end
+
+function compile(dir::String, value::Bool)
+    return value ? dir : ""
+end
+function compile(dir::String, value::Union{Set, Vector})
+    val = compile(value)
+    if !isempty(val)
+        vals = join(string.([dir, val]), " ")
+        return string(vals)
+    end
+    return ""
+end
+compile(::String,    value::Nothing) = ""
+compile(dir::String, value::Tuple)   = compile(dir, collect(value))
+compile(dir::String, value::String)  = compile(dir, [value])
+
+
+#= Value compilation =#
+function compile(value::Union{Vector, Set, Tuple})
+    # filter nothing, empty or false elements in an input collection
+    function filter_func(input)
+        return filter(x->!isnothing(x) && !isempty(x) && x !== false, input)
+    end
+
+    vals = filter_func(unique(collect(value)))
+    if isempty(value)
+        return ""
+    end
+    vals = filter_func(compile.(vals))
+    return join(compile.(vals), " ")
+end
+
+function compile(d::AbstractDict)
+    return JSON3.write(d)
+end
+compile(value::String) = value
+compile(value::Nothing) = ""
+compile(value::Bool) = value === true ? true : ""
+compile(any) = string(any)
+
+function Base.string(policy::Policy)
+    return string(compile(policy))
 end
