@@ -3,7 +3,7 @@ Content-Security-Policy: default-src 'self'; script-src https://example.com
 
 is the same as:
 
-Content-Security-Policy: 
+Content-Security-Policy:
         connect-src 'self';
         font-src 'self';
         frame-src 'self';
@@ -25,7 +25,6 @@ module CSP
     using JSON3
     using OrderedCollections
     using Random
-    using Revise
     using SHA
 
     include("constants.jl")
