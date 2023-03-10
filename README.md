@@ -1,4 +1,4 @@
-# CSP
+# ContentSecurityPolicy
 
 A Julia library to aid the integration of **[Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP)** headers into web applications.
 
