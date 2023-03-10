@@ -40,13 +40,19 @@ All are welcome, as well as feature requests and bug reports. Please open an iss
 
 While unregistered, the package can be installed via package manager by specifying a URL to the repository
 ```julia
-pkg> add https://github.com/charlieIT/CSP.jl
+pkg> add https://github.com/charlieIT/ContentSecurityPolicy.jl
 ```
 
 ## Usage examples
 
 ```julia
-using CSP
+using ContentSecurityPolicy
+```
+
+Can be used as `CSP`, for name shortening purposes
+```julia
+using ContentSecurityPolicy
+CSP.Policy()
 ```
 
 ### Build a Content Security Policy
@@ -105,7 +111,7 @@ policy["img-src"] = CSP.wildcard # "*"
 
 **Content-Security-Policy** header
 ```julia
-using CSP, HTTP
+using ContentSecurityPolicy, HTTP
 
 HTTP.Header(Policy(default=true))
 ```
@@ -160,7 +166,7 @@ OrderedCollections.OrderedDict{String, Any} with 3 entries:
 
 The example app will allow route handlers to tailor the CSP Policy on each response.
 ```julia
-using CSP, Dates, HTTP, JSON3, Random, Sockets
+using ContentSecurityPolicy, Dates, HTTP, JSON3, Random, Sockets
 ```
 **Middleware for adding CSP header to each response**
 ```julia
