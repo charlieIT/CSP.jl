@@ -1,4 +1,6 @@
 """
+ContentSecurityPolicy.jl is library for working with Content Security Policy headers
+
 Content-Security-Policy: default-src 'self'; script-src https://example.com
 
 is the same as:
@@ -17,9 +19,11 @@ Content-Security-Policy:
 
 [Content-Security-Policy @ mdn](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/default-src)
 """
-module CSP
+module ContentSecurityPolicy
 
-    export Policy, csp
+    export CSP, Policy, csp, meta
+
+    const CSP = ContentSecurityPolicy
 
     using HTTP
     using JSON3
