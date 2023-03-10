@@ -1,31 +1,31 @@
-using CSP
+using ContentSecurityPolicy
 using HTTP
 using JSON3
 using Random
 using Test
 
-import CSP.compile
-import CSP.compile_group
+import ContentSecurityPolicy.compile
+import ContentSecurityPolicy.compile_group
 # constants
-import CSP.data
-import CSP.wildcard
-import CSP.self
+import ContentSecurityPolicy.data
+import ContentSecurityPolicy.wildcard
+import ContentSecurityPolicy.self
 # Utils
-import CSP.DIRECTIVES
-import CSP._to_prop_name
-import CSP._directive_name
-import CSP.get_directive
-import CSP.meta_excluded
-import CSP.META_EXCLUDED
+import ContentSecurityPolicy.DIRECTIVES
+import ContentSecurityPolicy._to_prop_name
+import ContentSecurityPolicy._directive_name
+import ContentSecurityPolicy.get_directive
+import ContentSecurityPolicy.meta_excluded
+import ContentSecurityPolicy.META_EXCLUDED
 
-@testset "CSP Policy" begin
+@testset "Policy" begin
     policy = Policy(default=true);
     @test !policy.upgrade_insecure_requests
     @test !policy.sandbox
     @test isempty(policy.trusted_types)
 
     for key in keys(policy.directives)
-        http_name = CSP.get_directive(key)
+        http_name = get_directive(key)
         @test policy[http_name] == getproperty(policy, Symbol(key))
     end
 
