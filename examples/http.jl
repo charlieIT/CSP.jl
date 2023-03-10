@@ -1,4 +1,4 @@
-using CSP, HTTP
+using ContentSecurityPolicy, HTTP
 
 HTTP.Header(Policy(default=true))
 #=

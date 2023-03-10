@@ -1,4 +1,4 @@
-using CSP, Dates, HTTP, JSON3, Random, Sockets
+using ContentSecurityPolicy, Dates, HTTP, JSON3, Random, Sockets
 
 #=
 Simple web application with dynamic CSP policies, that can also receive CSP violation reports.

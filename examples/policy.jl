@@ -1,6 +1,5 @@
-using CSP
+using ContentSecurityPolicy
 
-using CSP
 policy = Policy(
 	# Set fallback for all fetch directives
 	"default-src"=>"*",
