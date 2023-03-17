@@ -18,7 +18,7 @@ The package is under active development and changes may occur.
 
 ### ToDo
 
-- [ ] Register package
+- [x] Register package
 - [ ] Improve support for csp-nonce and csp-hash
 - [ ] Improve default strict policy and improve overall configurability
 - [ ] Handle CSP violation reports
@@ -38,7 +38,12 @@ All are welcome, as well as feature requests and bug reports. Please open an iss
 
 ## Installation
 
-While unregistered, the package can be installed via package manager by specifying a URL to the repository
+The package can be installed via package manager
+```julia
+pkg> add ContentSecurityPolicy
+```
+
+It can also be installed by providing a [URL to the repository](https://pkgdocs.julialang.org/v1/managing-packages/#Adding-unregistered-packages)
 ```julia
 pkg> add https://github.com/charlieIT/ContentSecurityPolicy.jl
 ```
